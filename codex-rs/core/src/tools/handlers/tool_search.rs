@@ -4,7 +4,9 @@ use crate::tools::context::ToolPayload;
 use crate::tools::context::ToolSearchOutput;
 use crate::tools::context::boxed_tool_output;
 use crate::tools::handlers::tool_search_spec::create_tool_search_tool;
+use crate::tools::hook_names::HookToolName;
 use crate::tools::registry::CoreToolRuntime;
+use crate::tools::registry::PreToolUsePayload;
 use crate::tools::registry::ToolExecutor;
 use crate::tools::tool_search_entry::ToolSearchEntry;
 use crate::tools::tool_search_entry::ToolSearchInfo;
@@ -109,7 +111,20 @@ impl ToolExecutor<ToolInvocation> for ToolSearchHandler {
     }
 }
 
-impl CoreToolRuntime for ToolSearchHandler {}
+impl CoreToolRuntime for ToolSearchHandler {
+    fn pre_tool_use_payload(&self, invocation: &ToolInvocation) -> Option<PreToolUsePayload> {
+        let ToolPayload::ToolSearch { arguments } = &invocation.payload else {
+            return None;
+        };
+        Some(PreToolUsePayload {
+            tool_name: HookToolName::new(TOOL_SEARCH_TOOL_NAME),
+            tool_input: serde_json::json!({
+                "query": arguments.query,
+                "limit": arguments.limit,
+            }),
+        })
+    }
+}
 
 impl ToolSearchHandler {
     fn search(

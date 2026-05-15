@@ -3,8 +3,11 @@ use crate::tools::context::ToolInvocation;
 use crate::tools::context::ToolOutput;
 use crate::tools::context::ToolPayload;
 use crate::tools::context::boxed_tool_output;
+use crate::tools::flat_tool_name;
 use crate::tools::handlers::plan_spec::create_update_plan_tool;
+use crate::tools::hook_names::HookToolName;
 use crate::tools::registry::CoreToolRuntime;
+use crate::tools::registry::PreToolUsePayload;
 use crate::tools::registry::ToolExecutor;
 use codex_protocol::config_types::ModeKind;
 use codex_protocol::models::FunctionCallOutputPayload;
@@ -91,7 +94,19 @@ impl ToolExecutor<ToolInvocation> for PlanHandler {
     }
 }
 
-impl CoreToolRuntime for PlanHandler {}
+impl CoreToolRuntime for PlanHandler {
+    fn pre_tool_use_payload(&self, invocation: &ToolInvocation) -> Option<PreToolUsePayload> {
+        let ToolPayload::Function { arguments } = &invocation.payload else {
+            return None;
+        };
+        let tool_input = serde_json::from_str::<JsonValue>(arguments)
+            .unwrap_or_else(|_| serde_json::json!({ "raw_arguments": arguments }));
+        Some(PreToolUsePayload {
+            tool_name: HookToolName::new(flat_tool_name(&invocation.tool_name).into_owned()),
+            tool_input,
+        })
+    }
+}
 
 fn parse_update_plan_arguments(arguments: &str) -> Result<UpdatePlanArgs, FunctionCallError> {
     serde_json::from_str::<UpdatePlanArgs>(arguments).map_err(|e| {

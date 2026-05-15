@@ -2,9 +2,12 @@ use crate::function_tool::FunctionCallError;
 use crate::tools::context::ToolInvocation;
 use crate::tools::context::ToolPayload;
 use crate::tools::context::boxed_tool_output;
+use crate::tools::flat_tool_name;
 use crate::tools::handlers::goal_spec::GET_GOAL_TOOL_NAME;
 use crate::tools::handlers::goal_spec::create_get_goal_tool;
+use crate::tools::hook_names::HookToolName;
 use crate::tools::registry::CoreToolRuntime;
+use crate::tools::registry::PreToolUsePayload;
 use crate::tools::registry::ToolExecutor;
 use codex_tools::ToolName;
 use codex_tools::ToolSpec;
@@ -48,4 +51,16 @@ impl ToolExecutor<ToolInvocation> for GetGoalHandler {
     }
 }
 
-impl CoreToolRuntime for GetGoalHandler {}
+impl CoreToolRuntime for GetGoalHandler {
+    fn pre_tool_use_payload(&self, invocation: &ToolInvocation) -> Option<PreToolUsePayload> {
+        let ToolPayload::Function { arguments } = &invocation.payload else {
+            return None;
+        };
+        let tool_input = serde_json::from_str::<serde_json::Value>(arguments)
+            .unwrap_or_else(|_| serde_json::json!({ "raw_arguments": arguments }));
+        Some(PreToolUsePayload {
+            tool_name: HookToolName::new(flat_tool_name(&invocation.tool_name).into_owned()),
+            tool_input,
+        })
+    }
+}
