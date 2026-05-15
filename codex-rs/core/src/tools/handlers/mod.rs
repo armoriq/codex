@@ -30,6 +30,9 @@ pub(crate) mod unified_exec;
 mod view_image;
 pub(crate) mod view_image_spec;
 
+#[cfg(test)]
+mod pre_tool_use_payload_coverage_tests;
+
 use codex_sandboxing::policy_transforms::intersect_permission_profiles;
 use codex_sandboxing::policy_transforms::merge_permission_profiles;
 use codex_sandboxing::policy_transforms::normalize_additional_permissions;
